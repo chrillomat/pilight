@@ -118,7 +118,7 @@ function toggleTabs() {
 		oWebsocket.send(json);
 	} else {
 		bSending = true;
-		$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+		$.get(location.href+'/send?'+encodeURIComponent(json)+'&'+$.now());
 		window.setTimeout(function() { bSending = false; }, 1000);
 	}
 	document.location = document.location;
@@ -221,7 +221,7 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(location.href+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -259,7 +259,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(location.href+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -275,7 +275,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 					oWebsocket.send(json);
 				} else {
 					bSending = true;
-					$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+					$.get(location.href+'/send?'+encodeURIComponent(json)+'&'+$.now());
 					window.setTimeout(function() { bSending = false; }, 1000);
 				}
 			}
@@ -327,7 +327,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(location.href+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -354,7 +354,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(location.href+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -393,7 +393,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(location.href+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -409,7 +409,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+						$.get(location.href+'/send?'+encodeURIComponent(json)+'&'+$.now());
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -466,7 +466,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+						$.get(location.href+'/send?'+encodeURIComponent(json)+'&'+$.now());
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -1067,7 +1067,7 @@ window.onbeforeunload = function() {
 }
 
 function startAjax() {
-	$.get('http://'+location.host+'/config?internal&'+$.now(), function(txt) {
+	$.get(location.href+'/config?internal&'+$.now(), function(txt) {
 		bConnected = true;
 		if(!bSending) {
 			var data = $.parseJSON(txt);
@@ -1092,7 +1092,7 @@ function startAjax() {
 		}
 	});
 	var load = window.setInterval(function() {
-		$.get('http://'+location.host+'/values?'+$.now(), function(txt) {
+		$.get(location.href+'/values?'+$.now(), function(txt) {
 			bConnected = true;
 			if(!bSending) {
 				var data = $.parseJSON(txt);
@@ -1174,7 +1174,7 @@ $(document).ready(function() {
 
 		/* Use an AJAX request to check if the user want to enforce
 		   an AJAX connection, or if he wants to use websockets */
-		$.get('http://'+location.host+'/config?internal&'+$.now(), function(txt) {
+		$.get(location.href+'/config?internal&'+$.now(), function(txt) {
 			var data = $.parseJSON(txt);
 			if('registry' in data && 'webgui' in data['registry'] &&
 				 'tabs' in data['registry']['webgui']) {
