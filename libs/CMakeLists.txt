@@ -13,6 +13,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${wiringx_files} CACHE INTERNAL "")
 	endif()
 
+	if(NOT WIN32)
+		add_subdirectory(RFM69)
+		set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${RFM69_files} CACHE INTERNAL "")
+	endif()
+
 	add_subdirectory(avrdude)
 	set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${avrdude_files} CACHE INTERNAL "")
 
