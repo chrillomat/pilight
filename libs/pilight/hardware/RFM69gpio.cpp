@@ -30,7 +30,7 @@ extern "C" {
 #include "../core/irq.h"
 #include "../config/hardware.h"
 #include "../../wiringx/wiringX.h"
-// TODO: this is c++ code and causes unwanted mess here -> convert?
+// TODO: RFM69 class is C++ code and causes unwanted mess here -> convert?
 #include "../../RFM69/RFM69.h"
 #include "../../RFM69/RFM69registers.h"
 #include "RFM69gpio.h"
@@ -52,17 +52,17 @@ static unsigned short gpioRFM69HwInit(void) {
 		}
 		if(wiringXISR(gpio_RFM69, INT_EDGE_BOTH) < 0) {
 			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_RFM69);
-			return EXIT_SUCCESS;
+			return EXIT_FAILURE;
 		}
 	}
-	// TODO: RFM69
-	if(!radio.initialize(RF69_433MHZ,0,0xD4))
+	// RFM69
+	if(!radio.initialize(RF69_433MHZ, spidev_RFM69))
 	  {
-	  printf("error: could not initialize SPI\n");
+	  logprintf(LOG_ERR, "error: could not initialize SPI\n");
 	  return EXIT_FAILURE;
 	    }
 	else
-	  printf("SPI init OK\n");
+	   logprintf(LOG_DEBUG, "SPI init OK\n");
 	radio.writeReg(REG_DATAMODUL, RF_DATAMODUL_DATAMODE_CONTINUOUS | RF_DATAMODUL_MODULATIONTYPE_OOK | RF_DATAMODUL_MODULATIONSHAPING_00);
 	radio.setFrequency(433680000);
 	radio.writeReg(REG_BITRATEMSB, 0x16);
@@ -78,14 +78,13 @@ static unsigned short gpioRFM69HwInit(void) {
 }
 
 static unsigned short gpioRFM69HwDeinit(void) {
-	radio.writeReg(REG_OPMODE, RF_OPMODE_STANDBY);
+	radio.setMode(RF69_MODE_SLEEP);
 	return EXIT_SUCCESS;
 }
 
 static int gpioRFM69Send(int *code, int rawlen, int repeats) {
 	int r = 0, x = 0;
-	// TODO: enable TX for RFM69 and wait for modeReady (before GPIO setup)
-	radio.writeReg(REG_OPMODE, RF_OPMODE_TRANSMITTER);
+	radio.setMode(RF69_MODE_TX);
 	pinMode(gpio_RFM69, OUTPUT);
 	if(gpio_RFM69 >= 0) {
 		for(r=0;r<repeats;r++) {
@@ -106,8 +105,7 @@ static int gpioRFM69Send(int *code, int rawlen, int repeats) {
 }
 
 static int gpioRFM69Receive(void) {
-	// TODO: wait for modeReady (timeout!?)
-	radio.writeReg(REG_OPMODE, RF_OPMODE_RECEIVER);
+	radio.setMode(RF69_MODE_RX);
 	pinMode(gpio_RFM69, SYS);
 	if(gpio_RFM69 >= 0) {
 		return irq_read(gpio_RFM69);

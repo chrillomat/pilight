@@ -79,17 +79,10 @@ class RFM69 {
       _isRFM69HW = isRFM69HW;
     }
 
-    bool initialize(uint8_t freqBand, uint8_t ID, uint8_t networkID=1);
-    void setAddress(uint8_t addr);
-    void setNetwork(uint8_t networkID);
-    bool canSend();
-    void send(uint8_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK=false);
-    bool receiveDone();
+    bool initialize(uint8_t freqBand, uint8_t spidev);
     uint32_t getFrequency();
     void setFrequency(uint32_t freqHz);
-    void encrypt(const char* key);
     int16_t readRSSI(bool forceTrigger=false);
-    void promiscuous(bool onOff=true);
     void setHighPower(bool onOFF=true); // has to be called after initialize() for RFM69HW
     void setPowerLevel(uint8_t level); // reduce/increase transmit power level
     void sleep();
@@ -100,11 +93,9 @@ class RFM69 {
     uint8_t readReg(uint8_t addr);
     void writeReg(uint8_t addr, uint8_t val);
     void readAllRegs();
+    void setMode(uint8_t mode);
 
   protected:
-    static void isr0();
-    void virtual interruptHandler();
-    void sendFrame(uint8_t toAddress, const void* buffer, uint8_t size, bool requestACK=false, bool sendACK=false);
 
     static RFM69* selfPointer;
     uint8_t _interruptPin;
@@ -115,8 +106,6 @@ class RFM69 {
     bool _isRFM69HW;
     int _spi;
 
-    void receiveBegin();
-    void setMode(uint8_t mode);
     void setHighPowerRegs(bool onOff);
 };
 
