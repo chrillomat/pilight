@@ -21,7 +21,6 @@
 #include <string.h>
 #include <unistd.h>
 
-extern "C" {
 #include "../core/pilight.h"
 #include "../core/common.h"
 #include "../core/dso.h"
@@ -30,16 +29,12 @@ extern "C" {
 #include "../core/irq.h"
 #include "../config/hardware.h"
 #include "../../wiringx/wiringX.h"
-// TODO: RFM69 class is C++ code and causes unwanted mess here -> convert?
 #include "../../RFM69/RFM69.h"
 #include "../../RFM69/RFM69registers.h"
 #include "RFM69gpio.h"
-}
 
 static int gpio_RFM69 = 0;
 static int spidev_RFM69 = 0;
-
-RFM69 radio;
 
 static unsigned short gpioRFM69HwInit(void) {
 	if(wiringXSetup() == -1) {
@@ -56,35 +51,35 @@ static unsigned short gpioRFM69HwInit(void) {
 		}
 	}
 	// RFM69
-	if(!radio.initialize(RF69_433MHZ, spidev_RFM69))
+	if(!rfm69Initialize(RF69_433MHZ, spidev_RFM69))
 	  {
 	  logprintf(LOG_ERR, "error: could not initialize SPI\n");
 	  return EXIT_FAILURE;
 	    }
 	else
 	   logprintf(LOG_DEBUG, "SPI init OK\n");
-	radio.writeReg(REG_DATAMODUL, RF_DATAMODUL_DATAMODE_CONTINUOUS | RF_DATAMODUL_MODULATIONTYPE_OOK | RF_DATAMODUL_MODULATIONSHAPING_00);
-	radio.setFrequency(433680000);
-	radio.writeReg(REG_BITRATEMSB, 0x16);
-	radio.writeReg(REG_BITRATELSB, 0xDA);
-	radio.writeReg(REG_RXBW, RF_RXBW_DCCFREQ_010 | RF_RXBW_MANT_16 | RF_RXBW_EXP_0);
-	radio.writeReg(REG_SYNCCONFIG, RF_SYNC_OFF);
-	radio.writeReg(REG_RSSITHRESH, 220);
-	radio.writeReg(REG_OOKPEAK, RF_OOKPEAK_THRESHTYPE_PEAK | RF_OOKPEAK_PEAKTHRESHDEC_000);
-	radio.writeReg(REG_OOKFIX,6);
-	radio.writeReg(REG_AFCFEI, 0);
+	rfm69WriteReg(REG_DATAMODUL, RF_DATAMODUL_DATAMODE_CONTINUOUS | RF_DATAMODUL_MODULATIONTYPE_OOK | RF_DATAMODUL_MODULATIONSHAPING_00);
+	rfm69SetFrequency(433680000);
+	rfm69WriteReg(REG_BITRATEMSB, 0x16);
+	rfm69WriteReg(REG_BITRATELSB, 0xDA);
+	rfm69WriteReg(REG_RXBW, RF_RXBW_DCCFREQ_010 | RF_RXBW_MANT_16 | RF_RXBW_EXP_0);
+	rfm69WriteReg(REG_SYNCCONFIG, RF_SYNC_OFF);
+	rfm69WriteReg(REG_RSSITHRESH, 220);
+	rfm69WriteReg(REG_OOKPEAK, RF_OOKPEAK_THRESHTYPE_PEAK | RF_OOKPEAK_PEAKTHRESHDEC_000);
+	rfm69WriteReg(REG_OOKFIX,6);
+	rfm69WriteReg(REG_AFCFEI, 0);
 
 	return EXIT_SUCCESS;
 }
 
 static unsigned short gpioRFM69HwDeinit(void) {
-	radio.setMode(RF69_MODE_SLEEP);
+	rfm69SetMode(RF69_MODE_SLEEP);
 	return EXIT_SUCCESS;
 }
 
 static int gpioRFM69Send(int *code, int rawlen, int repeats) {
 	int r = 0, x = 0;
-	radio.setMode(RF69_MODE_TX);
+	rfm69SetMode(RF69_MODE_TX);
 	pinMode(gpio_RFM69, OUTPUT);
 	if(gpio_RFM69 >= 0) {
 		for(r=0;r<repeats;r++) {
@@ -105,7 +100,7 @@ static int gpioRFM69Send(int *code, int rawlen, int repeats) {
 }
 
 static int gpioRFM69Receive(void) {
-	radio.setMode(RF69_MODE_RX);
+	rfm69SetMode(RF69_MODE_RX);
 	pinMode(gpio_RFM69, SYS);
 	if(gpio_RFM69 >= 0) {
 		return irq_read(gpio_RFM69);

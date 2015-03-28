@@ -4,20 +4,14 @@
 // Based on work by Felix Rusu (2014), felix@lowpowerlab.com
 // http://lowpowerlab.com/
 // **********************************************************************************
+
 #include "RFM69.h"
 #include "RFM69registers.h"
 #include <stdio.h>
 #include <errno.h>
-extern "C" {
 #include "../wiringx/wiringX.h"
-}
 
-volatile uint8_t RFM69::DATA[RF69_MAX_DATA_LEN];
-volatile uint8_t RFM69::_mode;        // current transceiver state
-volatile int16_t RFM69::RSSI;          // most accurate RSSI during reception (closest to the reception)
-RFM69* RFM69::selfPointer;
-
-bool RFM69::initialize(uint8_t freqBand, uint8_t spidev)
+bool rfm69Initialize(uint8_t freqBand, uint8_t spidev)
 {
   const uint8_t CONFIG[][2] =
   {
@@ -61,107 +55,103 @@ bool RFM69::initialize(uint8_t freqBand, uint8_t spidev)
     {255, 0}
   };
 
+  // TODO: outside?
   wiringXSetup();
-  _spi=wiringXSPISetup(spidev,1000000);
-  if(_spi<0){
+  if(wiringXSPISetup(spidev,1000000) < 0){
     return false;
   }
 
-  do writeReg(REG_SYNCVALUE1, 0xAA); while (readReg(REG_SYNCVALUE1) != 0xAA);
-  do writeReg(REG_SYNCVALUE1, 0x55); while (readReg(REG_SYNCVALUE1) != 0x55);
+  do rfm69WriteReg(REG_SYNCVALUE1, 0xAA); while (rfm69ReadReg(REG_SYNCVALUE1) != 0xAA);
+  do rfm69WriteReg(REG_SYNCVALUE1, 0x55); while (rfm69ReadReg(REG_SYNCVALUE1) != 0x55);
 
-  for (uint8_t i = 0; CONFIG[i][0] != 255; i++)
-    writeReg(CONFIG[i][0], CONFIG[i][1]);
+  uint8_t i;
+  for (i = 0; CONFIG[i][0] != 255; i++)
+    rfm69WriteReg(CONFIG[i][0], CONFIG[i][1]);
 
-  setHighPower(_isRFM69HW); // called regardless if it's a RFM69W or RFM69HW
-  setMode(RF69_MODE_STANDBY);
-  while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
+  rfm69SetMode(RF69_MODE_STANDBY);
+  while ((rfm69ReadReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
 
-  selfPointer = this;
   return true;
 }
 
 // return the frequency (in Hz)
-uint32_t RFM69::getFrequency()
+uint32_t rfm69GetFrequency()
 {
-  return RF69_FSTEP * (((uint32_t) readReg(REG_FRFMSB) << 16) + ((uint16_t) readReg(REG_FRFMID) << 8) + readReg(REG_FRFLSB));
+  return RF69_FSTEP * (((uint32_t) rfm69ReadReg(REG_FRFMSB) << 16) + ((uint16_t) rfm69ReadReg(REG_FRFMID) << 8) + rfm69ReadReg(REG_FRFLSB));
 }
 
 // set the frequency (in Hz)
-void RFM69::setFrequency(uint32_t freqHz)
+void rfm69SetFrequency(uint32_t freqHz)
 {
   uint8_t oldMode = _mode;
   if (oldMode == RF69_MODE_TX) {
-    setMode(RF69_MODE_RX);
+    rfm69SetMode(RF69_MODE_RX);
   }
   freqHz /= RF69_FSTEP; // divide down by FSTEP to get FRF
-  writeReg(REG_FRFMSB, freqHz >> 16);
-  writeReg(REG_FRFMID, freqHz >> 8);
-  writeReg(REG_FRFLSB, freqHz);
+  rfm69WriteReg(REG_FRFMSB, freqHz >> 16);
+  rfm69WriteReg(REG_FRFMID, freqHz >> 8);
+  rfm69WriteReg(REG_FRFLSB, freqHz);
   if (oldMode == RF69_MODE_RX) {
-    setMode(RF69_MODE_SYNTH);
+    rfm69SetMode(RF69_MODE_SYNTH);
   }
-  setMode(oldMode);
+  rfm69SetMode(oldMode);
 }
 
-void RFM69::setMode(uint8_t newMode)
+void rfm69SetMode(uint8_t newMode)
 {
   if (newMode == _mode)
     return;
 
   switch (newMode) {
     case RF69_MODE_TX:
-      writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_TRANSMITTER);
-      if (_isRFM69HW) setHighPowerRegs(true);
+      rfm69WriteReg(REG_OPMODE, (rfm69ReadReg(REG_OPMODE) & 0xE3) | RF_OPMODE_TRANSMITTER);
       break;
     case RF69_MODE_RX:
-      writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_RECEIVER);
-      if (_isRFM69HW) setHighPowerRegs(false);
+      rfm69WriteReg(REG_OPMODE, (rfm69ReadReg(REG_OPMODE) & 0xE3) | RF_OPMODE_RECEIVER);
       break;
     case RF69_MODE_SYNTH:
-      writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SYNTHESIZER);
+      rfm69WriteReg(REG_OPMODE, (rfm69ReadReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SYNTHESIZER);
       break;
     case RF69_MODE_STANDBY:
-      writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_STANDBY);
+      rfm69WriteReg(REG_OPMODE, (rfm69ReadReg(REG_OPMODE) & 0xE3) | RF_OPMODE_STANDBY);
       break;
     case RF69_MODE_SLEEP:
-      writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SLEEP);
+      rfm69WriteReg(REG_OPMODE, (rfm69ReadReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SLEEP);
       break;
     default:
       return;
   }
 
-  while (_mode == RF69_MODE_SLEEP && (readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
+  while (_mode == RF69_MODE_SLEEP && (rfm69ReadReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
 
   _mode = newMode;
 }
 
-void RFM69::sleep() {
-  setMode(RF69_MODE_SLEEP);
+void rfm69Sleep() {
+  rfm69SetMode(RF69_MODE_SLEEP);
 }
 
 // set output power: 0 = min, 31 = max
 // this results in a "weaker" transmitted signal, and directly results in a lower RSSI at the receiver
-void RFM69::setPowerLevel(uint8_t powerLevel)
+void rfm69SetPowerLevel(uint8_t powerLevel)
 {
-  _powerLevel = powerLevel;
-  writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0xE0) | (_powerLevel > 31 ? 31 : _powerLevel));
+  rfm69WriteReg(REG_PALEVEL, (rfm69ReadReg(REG_PALEVEL) & 0xE0) | (powerLevel > 31 ? 31 : powerLevel));
 }
 
-int16_t RFM69::readRSSI(bool forceTrigger) {
+int16_t rfm69ReadRSSI(bool forceTrigger) {
   int16_t rssi = 0;
   if (forceTrigger)
   {
     // RSSI trigger not needed if DAGC is in continuous mode
-    writeReg(REG_RSSICONFIG, RF_RSSI_START);
-    while ((readReg(REG_RSSICONFIG) & RF_RSSI_DONE) == 0x00); // wait for RSSI_Ready
+    rfm69WriteReg(REG_RSSICONFIG, RF_RSSI_START);
+    while ((rfm69ReadReg(REG_RSSICONFIG) & RF_RSSI_DONE) == 0x00); // wait for RSSI_Ready
   }
-  rssi = -readReg(REG_RSSIVALUE);
+  rssi = -rfm69ReadReg(REG_RSSIVALUE);
   rssi >>= 1;
   return rssi;
 }
 
-uint8_t RFM69::readReg(uint8_t addr)
+uint8_t rfm69ReadReg(uint8_t addr)
 {
   uint8_t buf[2];
   int status;
@@ -170,12 +160,12 @@ uint8_t RFM69::readReg(uint8_t addr)
   status=wiringXSPIDataRW(0, buf, 2);
   if(status<0)
     {
-      wiringXLog(LOG_ERR, "readReg error");//: %s\n",strerror(errno));
+      wiringXLog(LOG_ERR, "rfm69ReadReg error");//: %s\n",strerror(errno));
     }
   return buf[1];
 }
 
-void RFM69::writeReg(uint8_t addr, uint8_t value)
+void rfm69WriteReg(uint8_t addr, uint8_t value)
 {
   uint8_t buf[2];
   int status;
@@ -184,48 +174,47 @@ void RFM69::writeReg(uint8_t addr, uint8_t value)
   status=wiringXSPIDataRW(0, buf, 2);
   if(status<0)
     {
-      wiringXLog(LOG_ERR, "writeReg error");//: %s\n",strerror(errno));
+      wiringXLog(LOG_ERR, "rfm69WriteReg error");//: %s\n",strerror(errno));
     }
 }
 
-void RFM69::setHighPower(bool onOff) {
-  _isRFM69HW = onOff;
-  writeReg(REG_OCP, _isRFM69HW ? RF_OCP_OFF : RF_OCP_ON);
-  if (_isRFM69HW) // turning ON
-    writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON); // enable P1 & P2 amplifier stages
+void rfm69SetHighPower(bool onOff) {
+  rfm69WriteReg(REG_OCP, onOff ? RF_OCP_OFF : RF_OCP_ON);
+  if (onOff) // turning ON
+    rfm69WriteReg(REG_PALEVEL, (rfm69ReadReg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON); // enable P1 & P2 amplifier stages
   else
-    writeReg(REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | _powerLevel); // enable P0 only
+    rfm69WriteReg(REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | (rfm69ReadReg(REG_PALEVEL) & 0x1F)); // enable P0 only
 }
 
-void RFM69::setHighPowerRegs(bool onOff) {
-  writeReg(REG_TESTPA1, onOff ? 0x5D : 0x55);
-  writeReg(REG_TESTPA2, onOff ? 0x7C : 0x70);
+void rfm69SetHighPowerRegs(bool onOff) {
+  rfm69WriteReg(REG_TESTPA1, onOff ? 0x5D : 0x55);
+  rfm69WriteReg(REG_TESTPA2, onOff ? 0x7C : 0x70);
 }
 
 // for debugging
-void RFM69::readAllRegs()
+void rfm69ReadAllRegs()
 {
   uint8_t regVal;
-
+  uint8_t regAddr;
   
-  for (uint8_t regAddr = 1; regAddr <= 0x4F; regAddr++)
+  for (regAddr = 1; regAddr <= 0x4F; regAddr++)
   {
-    regVal = readReg(regAddr);
+    regVal = rfm69ReadReg(regAddr);
 
     printf("reg 0x%x: 0x%x\n",regAddr, regVal);
   }
 }
 
-uint8_t RFM69::readTemperature(uint8_t calFactor) // returns centigrade
+uint8_t rfm69ReadTemperature(uint8_t calFactor) // returns centigrade
 {
-  setMode(RF69_MODE_STANDBY);
-  writeReg(REG_TEMP1, RF_TEMP1_MEAS_START);
-  while ((readReg(REG_TEMP1) & RF_TEMP1_MEAS_RUNNING));
-  return ~readReg(REG_TEMP2) + COURSE_TEMP_COEF + calFactor; // 'complement' corrects the slope, rising temp = rising val
+  rfm69SetMode(RF69_MODE_STANDBY);
+  rfm69WriteReg(REG_TEMP1, RF_TEMP1_MEAS_START);
+  while ((rfm69ReadReg(REG_TEMP1) & RF_TEMP1_MEAS_RUNNING));
+  return ~rfm69ReadReg(REG_TEMP2) + COURSE_TEMP_COEF + calFactor; // 'complement' corrects the slope, rising temp = rising val
 } // COURSE_TEMP_COEF puts reading in the ballpark, user can add additional correction
 
-void RFM69::rcCalibration()
+void rfm69RcCalibration()
 {
-  writeReg(REG_OSC1, RF_OSC1_RCCAL_START);
-  while ((readReg(REG_OSC1) & RF_OSC1_RCCAL_DONE) == 0x00);
+  rfm69WriteReg(REG_OSC1, RF_OSC1_RCCAL_START);
+  while ((rfm69ReadReg(REG_OSC1) & RF_OSC1_RCCAL_DONE) == 0x00);
 }

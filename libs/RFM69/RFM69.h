@@ -1,32 +1,8 @@
 // **********************************************************************************
 // Driver definition for HopeRF RFM69W/RFM69HW/RFM69CW/RFM69HCW, Semtech SX1231/1231H
 // **********************************************************************************
-// Copyright Felix Rusu (2014), felix@lowpowerlab.com
+// Based on work by Felix Rusu (2014), felix@lowpowerlab.com
 // http://lowpowerlab.com/
-// **********************************************************************************
-// License
-// **********************************************************************************
-// This program is free software; you can redistribute it 
-// and/or modify it under the terms of the GNU General    
-// Public License as published by the Free Software       
-// Foundation; either version 3 of the License, or        
-// (at your option) any later version.                    
-//                                                        
-// This program is distributed in the hope that it will   
-// be useful, but WITHOUT ANY WARRANTY; without even the  
-// implied warranty of MERCHANTABILITY or FITNESS FOR A   
-// PARTICULAR PURPOSE. See the GNU General Public        
-// License for more details.                              
-//                                                        
-// You should have received a copy of the GNU General    
-// Public License along with this program.
-// If not, see <http://www.gnu.org/licenses/>.
-//                                                        
-// Licence can be viewed at                               
-// http://www.gnu.org/licenses/gpl-3.0.txt
-//
-// Please maintain this license information along with authorship
-// and copyright notices in any redistribution of this code
 // **********************************************************************************
 #ifndef RFM69_h
 #define RFM69_h
@@ -57,56 +33,24 @@
 #define RF69_FSTEP  61.03515625 // == FXOSC / 2^19 = 32MHz / 2^19 (p13 in datasheet)
 
 #include <stdint.h>
+#include <stdbool.h>
 
-class RFM69 {
-  public:
-    static volatile uint8_t DATA[RF69_MAX_DATA_LEN]; // recv/xmit buf, including header & crc bytes
-    static volatile uint8_t DATALEN;
-    static volatile uint8_t SENDERID;
-    static volatile uint8_t TARGETID; // should match _address
-    static volatile uint8_t PAYLOADLEN;
-    static volatile uint8_t ACK_REQUESTED;
-    static volatile uint8_t ACK_RECEIVED; // should be polled immediately after sending a packet with ACK request
-    static volatile int16_t RSSI; // most accurate RSSI during reception (closest to the reception)
-    static volatile uint8_t _mode; // should be protected?
+static volatile uint8_t _mode; // should be protected?
 
-    RFM69(uint8_t interruptPin=RF69_IRQ_PIN, bool isRFM69HW=false, uint8_t interruptNum=RF69_IRQ_NUM) {
-      _interruptPin = interruptPin;
-      _interruptNum = interruptNum;
-      _mode = RF69_MODE_STANDBY;
-      _promiscuousMode = false;
-      _powerLevel = 31;
-      _isRFM69HW = isRFM69HW;
-    }
+bool rfm69Initialize(uint8_t freqBand, uint8_t spidev);
+uint32_t rfm69GetFrequency();
+void rfm69SetFrequency(uint32_t freqHz);
+int16_t rfm69ReadRSSI(bool forceTrigger);
+void rfm69SetHighPower(bool onOFF); // has to be called after initialize() for RFM69HW
+void rfm69SetPowerLevel(uint8_t level); // reduce/increase transmit power level
+void rfm69Sleep();
+uint8_t rfm69ReadTemperature(uint8_t calFactor); // get CMOS temperature (8bit)
+void rfmRcCalibration(); // calibrate the internal RC oscillator for use in wide temperature variations - see datasheet section [4.3.5. RC Timer Accuracy]
 
-    bool initialize(uint8_t freqBand, uint8_t spidev);
-    uint32_t getFrequency();
-    void setFrequency(uint32_t freqHz);
-    int16_t readRSSI(bool forceTrigger=false);
-    void setHighPower(bool onOFF=true); // has to be called after initialize() for RFM69HW
-    void setPowerLevel(uint8_t level); // reduce/increase transmit power level
-    void sleep();
-    uint8_t readTemperature(uint8_t calFactor=0); // get CMOS temperature (8bit)
-    void rcCalibration(); // calibrate the internal RC oscillator for use in wide temperature variations - see datasheet section [4.3.5. RC Timer Accuracy]
-
-    // allow hacking registers by making these public
-    uint8_t readReg(uint8_t addr);
-    void writeReg(uint8_t addr, uint8_t val);
-    void readAllRegs();
-    void setMode(uint8_t mode);
-
-  protected:
-
-    static RFM69* selfPointer;
-    uint8_t _interruptPin;
-    uint8_t _interruptNum;
-    uint8_t _address;
-    bool _promiscuousMode;
-    uint8_t _powerLevel;
-    bool _isRFM69HW;
-    int _spi;
-
-    void setHighPowerRegs(bool onOff);
-};
+uint8_t rfm69ReadReg(uint8_t addr);
+void rfm69WriteReg(uint8_t addr, uint8_t val);
+void rfm69ReadAllRegs();
+void rfm69SetMode(uint8_t mode);
+void rfm69SetHighPowerRegs(bool onOff);
 
 #endif
