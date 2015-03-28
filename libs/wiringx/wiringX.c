@@ -38,6 +38,10 @@
 
 static struct platform_t *platform = NULL;
 
+// moved from wiringX.h to avoid "multiple definition" errors
+void (*wiringXLog)(int prio, const char *format_str, ...);
+struct platform_t *platforms;
+
 #if defined(__arm__) || defined(__mips__)
 	static int setup = -2;
 #endif

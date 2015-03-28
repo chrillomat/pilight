@@ -1,6 +1,6 @@
 project(pilight_hardware)
 
-file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/*.c")
+file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/*.c" "${PROJECT_SOURCE_DIR}/*.cpp")
 file(GLOB ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/*.h")
 
 if(${MODULESPACK} MATCHES "OFF" OR WIN32)

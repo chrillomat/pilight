@@ -19,8 +19,6 @@
 #ifndef _PILIGHT_H_
 #define _PILIGHT_H_
 
-typedef enum origin_t origin_t;
-typedef enum runmode_t runmode_t;
 
 #include "defines.h"
 #include "json.h"
@@ -41,6 +39,9 @@ enum origin_t {
 	ACTION,
 	PROTOCOL
 };
+
+typedef enum origin_t origin_t;
+typedef enum runmode_t runmode_t;
 
 #include "../config/devices.h"
 
